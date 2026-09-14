@@ -42,21 +42,54 @@ floor.rotation.x = -Math.PI / 2;
 
 scene.add(floor);
 
-// 5. Create a cube as our temporary object
-const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+// 5. Create a simple fly placeholder
 
-const cubeMaterial = new THREE.MeshBasicMaterial({
+const fly = new THREE.Group();
+
+// Body
+const bodyGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+const bodyMaterial = new THREE.MeshBasicMaterial({
   color: 0x222222
 });
 
-const cube = new THREE.Mesh(
-  cubeGeometry,
-  cubeMaterial
-);
+const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+body.scale.set(1.5, 0.8, 0.8);
 
-cube.position.y = 0.5;
+fly.add(body);
 
-scene.add(cube);
+// Head
+const headGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+const head = new THREE.Mesh(headGeometry, bodyMaterial);
+
+head.position.z = -0.35;
+
+fly.add(head);
+
+// Wings
+const wingGeometry = new THREE.PlaneGeometry(0.7, 0.35);
+const wingMaterial = new THREE.MeshBasicMaterial({
+  color: 0xdddddd,
+  transparent: true,
+  opacity: 0.7,
+  side: THREE.DoubleSide
+});
+
+const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+leftWing.position.set(-0.35, 0.15, 0);
+leftWing.rotation.z = -0.3;
+
+fly.add(leftWing);
+
+const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+rightWing.position.set(0.35, 0.15, 0);
+rightWing.rotation.z = 0.3;
+
+fly.add(rightWing);
+
+// Put the fly slightly above the floor
+fly.position.set(0, 0.5, 0);
+
+scene.add(fly);
 
 // 6. Handle browser resizing
 window.addEventListener('resize', () => {
@@ -70,7 +103,7 @@ window.addEventListener('resize', () => {
 function animate() {
   requestAnimationFrame(animate);
 
-  cube.rotation.y += 0.01;
+  fly.rotation.y += 0.01;
 
   renderer.render(scene, camera);
 }

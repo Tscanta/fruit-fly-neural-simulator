@@ -1,60 +1,78 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import typescriptLogo from './assets/typescript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.ts'
+import * as THREE from 'three';
+import './style.css';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${typescriptLogo}" class="framework" alt="TypeScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.ts</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+// 1. Create the 3D world
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
 
-<div class="ticks"></div>
+// 2. Create the camera
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://www.typescriptlang.org" target="_blank">
-          <img class="button-icon" src="${typescriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+camera.position.set(0, 2, 5);
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+// 3. Create the renderer
+const renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+document.body.appendChild(renderer.domElement);
+
+// 4. Create a simple floor
+const floorGeometry = new THREE.PlaneGeometry(20, 20);
+
+const floorMaterial = new THREE.MeshBasicMaterial({
+  color: 0xf5f5f5,
+  side: THREE.DoubleSide
+});
+
+const floor = new THREE.Mesh(
+  floorGeometry,
+  floorMaterial
+);
+
+floor.rotation.x = -Math.PI / 2;
+
+scene.add(floor);
+
+// 5. Create a cube as our temporary object
+const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+const cubeMaterial = new THREE.MeshBasicMaterial({
+  color: 0x222222
+});
+
+const cube = new THREE.Mesh(
+  cubeGeometry,
+  cubeMaterial
+);
+
+cube.position.y = 0.5;
+
+scene.add(cube);
+
+// 6. Handle browser resizing
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// 7. Game/simulation loop
+function animate() {
+  requestAnimationFrame(animate);
+
+  cube.rotation.y += 0.01;
+
+  renderer.render(scene, camera);
+}
+
+animate();

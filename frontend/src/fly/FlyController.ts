@@ -1,5 +1,13 @@
 import * as THREE from 'three';
 
+export type FlyMovement =
+  | 'forward'
+  | 'backward'
+  | 'left'
+  | 'right'
+  | 'up'
+  | 'down';
+
 export class FlyController {
   private fly: THREE.Group;
   private moveSpeed = 0.03;
@@ -8,16 +16,40 @@ export class FlyController {
     this.fly = fly;
   }
 
-  move(direction: THREE.Vector3) {
-    if (direction.lengthSq() === 0) return;
+  move(command: FlyMovement) {
+    const direction = new THREE.Vector3();
 
-    direction.normalize();
+    switch (command) {
+      case 'forward':
+        direction.set(0, 0, 1);
+        break;
 
-    // Move the fly
+      case 'backward':
+        direction.set(0, 0, -1);
+        break;
+
+      case 'left':
+        direction.set(-1, 0, 0);
+        break;
+
+      case 'right':
+        direction.set(1, 0, 0);
+        break;
+
+      case 'up':
+        direction.set(0, 1, 0);
+        break;
+
+      case 'down':
+        direction.set(0, -1, 0);
+        break;
+    }
+
     this.fly.position.addScaledVector(direction, this.moveSpeed);
 
-    // Rotate the fly to face its movement direction
-    this.fly.rotation.y = Math.atan2(direction.x, direction.z);
+    if (direction.lengthSq() > 0) {
+      this.fly.rotation.y = Math.atan2(direction.x, direction.z);
+    }
   }
 
   getPosition(): THREE.Vector3 {

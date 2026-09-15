@@ -365,8 +365,8 @@ const moveSpeed = 0.08;
 // ...
 function animate() {
 
-  const flyDirection = new THREE.Vector3(1, 0, 0);
-  flyController.move(flyDirection);
+  //const flyDirection = new THREE.Vector3(1, 0, 0);
+  flyController.move('up');
 
   // Ask the browser to run this function again on the
   // next animation frame.

@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import './style.css';
-
+import { FlyController } from './fly/FlyController'; // Controller for the fly
 
 // ============================================================
 // 1. KEYBOARD INPUT
@@ -270,7 +270,7 @@ fly.position.set(0, 0.5, 0);
 
 // Add the fly to the scene.
 scene.add(fly);
-
+const flyController = new FlyController(fly);
 
 // ============================================================
 // 8. MOUSE CAMERA CONTROL
@@ -364,6 +364,9 @@ const moveSpeed = 0.08;
 //      ↓
 // ...
 function animate() {
+
+  const flyDirection = new THREE.Vector3(1, 0, 0);
+  flyController.move(flyDirection);
 
   // Ask the browser to run this function again on the
   // next animation frame.

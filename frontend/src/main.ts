@@ -334,8 +334,29 @@ function animate() {
   // Temporary command used to test acceleration,
   // velocity and drag.
 
+if (keys['i']) {
   flyController.move('forward');
+}
 
+if (keys['k']) {
+  flyController.move('backward');
+}
+
+if (keys['j']) {
+  flyController.move('left');
+}
+
+if (keys['l']) {
+  flyController.move('right');
+}
+
+if (keys['u']) {
+  flyController.move('up');
+}
+
+if (keys['o']) {
+  flyController.move('down');
+}
 
   // Update the fly's position using its current velocity.
   flyController.update();

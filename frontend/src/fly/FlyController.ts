@@ -10,7 +10,12 @@ export type FlyMovement =
 
 export class FlyController {
   private fly: THREE.Group;
-  private moveSpeed = 0.03;
+
+  private velocity = new THREE.Vector3();
+
+  private acceleration = 0.002;
+  private maxSpeed = 0.08;
+  private drag = 0.90;
 
   constructor(fly: THREE.Group) {
     this.fly = fly;
@@ -45,11 +50,21 @@ export class FlyController {
         break;
     }
 
-    this.fly.position.addScaledVector(direction, this.moveSpeed);
+    this.velocity.addScaledVector(direction, this.acceleration);
+
+    if (this.velocity.length() > this.maxSpeed) {
+      this.velocity.setLength(this.maxSpeed);
+    }
 
     if (direction.lengthSq() > 0) {
       this.fly.rotation.y = Math.atan2(direction.x, direction.z);
     }
+  }
+
+  update() {
+    this.fly.position.add(this.velocity);
+
+    this.velocity.multiplyScalar(this.drag);
   }
 
   getPosition(): THREE.Vector3 {

@@ -1,22 +1,18 @@
 // ============================================================
 // FLY BRAIN PROJECT
 // Phase 1 — 3D Simulation Environment
-// Step 4B — Mouse Camera Look
+// Step 5D — Fly Physics / Movement State
 // ============================================================
 
 import * as THREE from 'three';
 import './style.css';
-import { FlyController } from './fly/FlyController'; // Controller for the fly
+import { FlyController } from './fly/FlyController';
 
 // ============================================================
 // 1. KEYBOARD INPUT
 // ============================================================
 
 // Stores the current state of keyboard keys.
-//
-// Example:
-// keys["w"] = true  → W is currently being held
-// keys["w"] = false → W is not being held
 const keys: Record<string, boolean> = {};
 
 
@@ -36,17 +32,15 @@ window.addEventListener('keyup', (event) => {
 // 2. CAMERA ROTATION VARIABLES
 // ============================================================
 
-// Yaw controls horizontal camera rotation.
-// Positive/negative values rotate the camera left and right.
+// Horizontal camera rotation.
 let yaw = 0;
 
 
-// Pitch controls vertical camera rotation.
-// Positive/negative values make the camera look up and down.
+// Vertical camera rotation.
 let pitch = 0;
 
 
-// Controls how sensitive the mouse is.
+// Mouse sensitivity.
 const mouseSensitivity = 0.002;
 
 
@@ -54,8 +48,6 @@ const mouseSensitivity = 0.002;
 // 3. CREATE THE 3D WORLD
 // ============================================================
 
-// The Scene is the main container for everything in our
-// virtual environment.
 const scene = new THREE.Scene();
 
 
@@ -67,14 +59,6 @@ scene.background = new THREE.Color(0xffffff);
 // 4. CREATE THE CAMERA
 // ============================================================
 
-// PerspectiveCamera creates a camera that behaves like
-// a real-world camera.
-//
-// Arguments:
-// 75   → field of view
-// aspect ratio → width / height
-// 0.1  → nearest visible distance
-// 1000 → farthest visible distance
 const camera = new THREE.PerspectiveCamera(
   75,
   window.innerWidth / window.innerHeight,
@@ -84,10 +68,6 @@ const camera = new THREE.PerspectiveCamera(
 
 
 // Initial camera position.
-//
-// X → left/right
-// Y → up/down
-// Z → forward/backward
 camera.position.set(0, 2, 5);
 
 
@@ -95,8 +75,6 @@ camera.position.set(0, 2, 5);
 // 5. CREATE THE RENDERER
 // ============================================================
 
-// The renderer converts our 3D scene into pixels that
-// the browser can display.
 const renderer = new THREE.WebGLRenderer({
   antialias: true
 });
@@ -123,20 +101,15 @@ document.body.appendChild(renderer.domElement);
 // 6. CREATE THE FLOOR
 // ============================================================
 
-// Create a large flat plane.
-//
-// 20 × 20 gives us a simple starting environment.
 const floorGeometry = new THREE.PlaneGeometry(20, 20);
 
 
-// Create a simple light-gray material.
 const floorMaterial = new THREE.MeshBasicMaterial({
   color: 0xf5f5f5,
   side: THREE.DoubleSide
 });
 
 
-// Combine the geometry and material into a mesh.
 const floor = new THREE.Mesh(
   floorGeometry,
   floorMaterial
@@ -144,9 +117,6 @@ const floor = new THREE.Mesh(
 
 
 // Rotate the plane so it lies horizontally.
-//
-// PlaneGeometry is normally vertical.
-// Rotating it 90 degrees puts it on the ground.
 floor.rotation.x = -Math.PI / 2;
 
 
@@ -158,17 +128,15 @@ scene.add(floor);
 // 7. CREATE THE FLY PLACEHOLDER
 // ============================================================
 
-// We use a THREE.Group so multiple objects can behave
-// as one fly.
-//
-// Later this placeholder will be replaced with a proper
-// fly model and eventually connected to the neural simulation.
+// The fly is a Group so all of its parts can be
+// controlled as one object.
+
 const fly = new THREE.Group();
 
 
-// -------------------------
+// ------------------------------------------------------------
 // Fly Body
-// -------------------------
+// ------------------------------------------------------------
 
 const bodyGeometry = new THREE.SphereGeometry(
   0.35,
@@ -176,9 +144,11 @@ const bodyGeometry = new THREE.SphereGeometry(
   16
 );
 
+
 const bodyMaterial = new THREE.MeshBasicMaterial({
   color: 0x222222
 });
+
 
 const body = new THREE.Mesh(
   bodyGeometry,
@@ -194,15 +164,16 @@ body.scale.set(1.5, 0.8, 0.8);
 fly.add(body);
 
 
-// -------------------------
+// ------------------------------------------------------------
 // Fly Head
-// -------------------------
+// ------------------------------------------------------------
 
 const headGeometry = new THREE.SphereGeometry(
   0.2,
   16,
   16
 );
+
 
 const head = new THREE.Mesh(
   headGeometry,
@@ -218,9 +189,9 @@ head.position.z = -0.35;
 fly.add(head);
 
 
-// -------------------------
+// ------------------------------------------------------------
 // Fly Wings
-// -------------------------
+// ------------------------------------------------------------
 
 const wingGeometry = new THREE.PlaneGeometry(
   0.7,
@@ -260,9 +231,9 @@ rightWing.rotation.z = 0.3;
 fly.add(rightWing);
 
 
-// -------------------------
+// ------------------------------------------------------------
 // Fly Position
-// -------------------------
+// ------------------------------------------------------------
 
 // Place the fly slightly above the floor.
 fly.position.set(0, 0.5, 0);
@@ -270,17 +241,23 @@ fly.position.set(0, 0.5, 0);
 
 // Add the fly to the scene.
 scene.add(fly);
+
+
+// ============================================================
+// 8. CREATE FLY CONTROLLER
+// ============================================================
+
+// The controller handles the fly's movement,
+// rotation, velocity and physics state.
+
 const flyController = new FlyController(fly);
 
+
 // ============================================================
-// 8. MOUSE CAMERA CONTROL
+// 9. MOUSE CAMERA CONTROL
 // ============================================================
 
-// Clicking the 3D scene locks the mouse pointer to the
-// browser window.
-//
-// This gives us the same basic behavior used by many
-// first-person/third-person games.
+// Lock the mouse when the scene is clicked.
 renderer.domElement.addEventListener('click', () => {
   renderer.domElement.requestPointerLock();
 });
@@ -289,7 +266,7 @@ renderer.domElement.addEventListener('click', () => {
 // Listen for mouse movement.
 document.addEventListener('mousemove', (event) => {
 
-  // Ignore mouse movement unless the pointer is locked.
+  // Ignore movement unless the pointer is locked.
   if (document.pointerLockElement !== renderer.domElement) {
     return;
   }
@@ -314,11 +291,9 @@ document.addEventListener('mousemove', (event) => {
 
 
 // ============================================================
-// 9. HANDLE BROWSER RESIZING
+// 10. HANDLE BROWSER RESIZING
 // ============================================================
 
-// Update the camera and renderer when the browser window
-// changes size.
 window.addEventListener('resize', () => {
 
   camera.aspect =
@@ -334,7 +309,7 @@ window.addEventListener('resize', () => {
 
 
 // ============================================================
-// 10. MOVEMENT SETTINGS
+// 11. CAMERA MOVEMENT SETTINGS
 // ============================================================
 
 // Controls how quickly the camera moves.
@@ -342,117 +317,116 @@ const moveSpeed = 0.08;
 
 
 // ============================================================
-// 11. MAIN SIMULATION / GAME LOOP
+// 12. MAIN SIMULATION / GAME LOOP
 // ============================================================
 
-// This function runs continuously.
-//
-// Eventually this loop will become the heart of our
-// biological simulation:
-//
-// Environment
-//      ↓
-// Sensory input
-//      ↓
-// Neural simulation
-//      ↓
-// Motor output
-//      ↓
-// Fly movement
-//      ↓
-// Environment
-//      ↓
-// ...
 function animate() {
 
-  //const flyDirection = new THREE.Vector3(1, 0, 0);
-  flyController.move('up');
-
-  // Ask the browser to run this function again on the
-  // next animation frame.
+  // Ask the browser to run this function again
+  // on the next animation frame.
   requestAnimationFrame(animate);
 
-// ----------------------------------------------------------
-// Camera-relative movement
-// ----------------------------------------------------------
 
-// Get the direction the camera is currently facing.
-const forward = new THREE.Vector3();
+  // ==========================================================
+  // FLY PHYSICS TEST
+  // ==========================================================
 
-camera.getWorldDirection(forward);
+  // Temporary command used to test acceleration,
+  // velocity and drag.
 
-
-// We only want movement across the ground.
-// Ignore the camera's vertical direction.
-forward.y = 0;
+  flyController.move('forward');
 
 
-// Normalize the vector so movement speed stays consistent.
-forward.normalize();
+  // Update the fly's position using its current velocity.
+  flyController.update();
 
 
-// Create a vector representing the camera's right direction.
-const right = new THREE.Vector3();
+  // ==========================================================
+  // CAMERA-RELATIVE MOVEMENT
+  // ==========================================================
 
-right.crossVectors(
-  forward,
-  camera.up
-).normalize();
+  // Get the direction the camera is currently facing.
+  const forward = new THREE.Vector3();
 
-// ----------------------------------------------------------
-// Keyboard movement
-// ----------------------------------------------------------
+  camera.getWorldDirection(forward);
 
-// Move forward/backward
-if (keys['w'] || keys['arrowup']) {
-  camera.position.addScaledVector(
+
+  // Only move across the ground.
+  forward.y = 0;
+
+
+  // Keep movement speed consistent.
+  forward.normalize();
+
+
+  // Create a vector representing the camera's right direction.
+  const right = new THREE.Vector3();
+
+  right.crossVectors(
     forward,
-    moveSpeed
-  );
-}
+    camera.up
+  ).normalize();
 
-if (keys['s'] || keys['arrowdown']) {
-  camera.position.addScaledVector(
-    forward,
-    -moveSpeed
-  );
-}
 
-// Move left/right
-if (keys['a'] || keys['arrowleft']) {
-  camera.position.addScaledVector(
-    right,
-    -moveSpeed
-  );
-}
+  // ==========================================================
+  // KEYBOARD CAMERA MOVEMENT
+  // ==========================================================
 
-if (keys['d'] || keys['arrowright']) {
-  camera.position.addScaledVector(
-    right,
-    moveSpeed
-  );
-}
+  // Move forward.
+  if (keys['w'] || keys['arrowup']) {
+    camera.position.addScaledVector(
+      forward,
+      moveSpeed
+    );
+  }
 
-  // ----------------------------------------------------------
-  // Apply mouse-controlled camera rotation
-  // ----------------------------------------------------------
 
-  // YXZ rotation order allows us to control yaw and pitch
-  // independently without unwanted rotation behavior.
+  // Move backward.
+  if (keys['s'] || keys['arrowdown']) {
+    camera.position.addScaledVector(
+      forward,
+      -moveSpeed
+    );
+  }
+
+
+  // Move left.
+  if (keys['a'] || keys['arrowleft']) {
+    camera.position.addScaledVector(
+      right,
+      -moveSpeed
+    );
+  }
+
+
+  // Move right.
+  if (keys['d'] || keys['arrowright']) {
+    camera.position.addScaledVector(
+      right,
+      moveSpeed
+    );
+  }
+
+
+  // ==========================================================
+  // CAMERA ROTATION
+  // ==========================================================
+
+  // YXZ allows yaw and pitch to be controlled independently.
   camera.rotation.order = 'YXZ';
 
 
-  // Horizontal rotation
+  // Horizontal rotation.
   camera.rotation.y = yaw;
 
 
-  // Vertical rotation
+  // Vertical rotation.
   camera.rotation.x = pitch;
 
 
-  // ----------------------------------------------------------
-  // Render the scene
-  // ----------------------------------------------------------
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   renderer.render(
     scene,
@@ -462,9 +436,8 @@ if (keys['d'] || keys['arrowright']) {
 
 
 // ============================================================
-// 12. START THE SIMULATION
+// 13. START THE SIMULATION
 // ============================================================
 
-// Defining animate() isn't enough.
-// Calling it actually starts the continuous render loop.
+// Calling animate() starts the continuous simulation loop.
 animate();

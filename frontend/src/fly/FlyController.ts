@@ -21,63 +21,58 @@ export class FlyController {
     this.fly = fly;
   }
 
-move(command: FlyMovement) {
-  const direction = new THREE.Vector3();
+  move(command: FlyMovement) {
+    const direction = new THREE.Vector3();
 
-  switch (command) {
-    case 'forward':
-      direction.set(0, 0, 1);
-      break;
+    switch (command) {
+      case 'forward':
+        direction.set(0, 0, -1);
+        break;
 
-    case 'backward':
-      direction.set(0, 0, -1);
-      break;
+      case 'backward':
+        direction.set(0, 0, 1);
+        break;
 
-    case 'left':
-      direction.set(-1, 0, 0);
-      break;
+      case 'left':
+        direction.set(-1, 0, 0);
+        break;
 
-    case 'right':
-      direction.set(1, 0, 0);
-      break;
+      case 'right':
+        direction.set(1, 0, 0);
+        break;
 
-    case 'up':
-      direction.set(0, 1, 0);
-      break;
+      case 'up':
+        direction.set(0, 1, 0);
+        break;
 
-    case 'down':
-      direction.set(0, -1, 0);
-      break;
+      case 'down':
+        direction.set(0, -1, 0);
+        break;
+    }
+
+    if (direction.lengthSq() === 0) return;
+
+    direction.normalize();
+
+    this.velocity.addScaledVector(
+      direction,
+      this.acceleration
+    );
+
+    if (this.velocity.length() > this.maxSpeed) {
+      this.velocity.setLength(this.maxSpeed);
+    }
+
+    // Rotate toward movement direction.
+    this.fly.rotation.y = Math.atan2(
+      direction.x,
+      direction.z
+    );
   }
-  this.applyMovement(direction);
-}
-
-private applyMovement(direction: THREE.Vector3) {
-  if (direction.lengthSq() === 0) return;
-
-  direction.normalize();
-
-  this.velocity.addScaledVector(
-    direction,
-    this.acceleration
-  );
-
-  if (this.velocity.length() > this.maxSpeed) {
-    this.velocity.setLength(this.maxSpeed);
-  }
-
-  this.fly.rotation.y = Math.atan2(
-    direction.x,
-    direction.z
-  );
-}
 
   update() {
-    // Apply current velocity to the fly.
     this.fly.position.add(this.velocity);
 
-    // Gradually reduce velocity when no acceleration
-    // is being applied.
     this.velocity.multiplyScalar(this.drag);
   }
 

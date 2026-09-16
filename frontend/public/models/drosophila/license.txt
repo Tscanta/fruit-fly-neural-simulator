@@ -1,0 +1,11 @@
+Model Information:
+* title:	Wildtype Male Drosophila Melanogaster
+* source:	https://sketchfab.com/3d-models/wildtype-male-drosophila-melanogaster-0affd20207ca4c889bd7e1e513e04dfa
+* author:	mlykouretzos (https://sketchfab.com/mlykouretzos)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Wildtype Male Drosophila Melanogaster" (https://sketchfab.com/3d-models/wildtype-male-drosophila-melanogaster-0affd20207ca4c889bd7e1e513e04dfa) by mlykouretzos (https://sketchfab.com/mlykouretzos) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

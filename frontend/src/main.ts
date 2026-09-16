@@ -1,18 +1,13 @@
-// ============================================================
 // FLY BRAIN PROJECT
 // Phase 1 — 3D Simulation Environment
-// Step 6A — Replace Placeholder Fly
-// ============================================================
+// Step 6C — Fly Model Inspection
 
 import * as THREE from 'three';
 import './style.css';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FlyController } from './fly/FlyController';
 
-
-// ============================================================
-// 1. KEYBOARD INPUT
-// ============================================================
+// Keyboard input
 
 const keys: Record<string, boolean> = {};
 
@@ -24,29 +19,20 @@ window.addEventListener('keyup', (event) => {
   keys[event.key.toLowerCase()] = false;
 });
 
-
-// ============================================================
-// 2. CAMERA ROTATION VARIABLES
-// ============================================================
+// Camera rotation
 
 let yaw = 0;
 let pitch = 0;
 
 const mouseSensitivity = 0.002;
 
-
-// ============================================================
-// 3. CREATE THE 3D WORLD
-// ============================================================
+// Create scene
 
 const scene = new THREE.Scene();
 
 scene.background = new THREE.Color(0xffffff);
 
-
-// ============================================================
-// 4. CREATE THE CAMERA
-// ============================================================
+// Create camera
 
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -57,10 +43,7 @@ const camera = new THREE.PerspectiveCamera(
 
 camera.position.set(0, 2, 5);
 
-
-// ============================================================
-// 5. CREATE THE RENDERER
-// ============================================================
+// Create renderer
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true
@@ -77,10 +60,7 @@ renderer.setPixelRatio(
 
 document.body.appendChild(renderer.domElement);
 
-
-// ============================================================
-// 6. CREATE THE FLOOR
-// ============================================================
+// Create floor
 
 const floorGeometry = new THREE.PlaneGeometry(20, 20);
 
@@ -98,9 +78,8 @@ floor.rotation.x = -Math.PI / 2;
 
 scene.add(floor);
 
+// Create lighting
 
-// 6B. CREATE LIGHTING
-// Ambient light provides general illumination.
 const ambientLight = new THREE.AmbientLight(
   0xffffff,
   2
@@ -108,8 +87,6 @@ const ambientLight = new THREE.AmbientLight(
 
 scene.add(ambientLight);
 
-
-// Directional light acts like a simple sun.
 const directionalLight = new THREE.DirectionalLight(
   0xffffff,
   3
@@ -123,13 +100,7 @@ directionalLight.position.set(
 
 scene.add(directionalLight);
 
-
-// 7. CREATE FLY CONTROLLER GROUP
-
-// This outer group is the actual "body container"
-// controlled by FlyController.
-
-// The downloaded Drosophila model will be placed inside it.
+// Create fly controller group
 
 const fly = new THREE.Group();
 
@@ -137,44 +108,46 @@ fly.position.set(0, 0.5, 0);
 
 scene.add(fly);
 
-// 8. LOAD DROSOPHILA MODEL
+// Load Drosophila model
+
 const loader = new GLTFLoader();
+
 let flyController: FlyController | null = null;
+
 loader.load(
   '/models/drosophila/scene.gltf',
+
   (gltf) => {
-
-    // Get the actual 3D model.
     const model = gltf.scene;
-    model.rotation.y = Math.PI; // Align the fly's anatomical front with -Z.
 
-    // MODEL HIERARCHY INSPECTION
-    // Print every object contained inside the Drosophila model.
-    // This helps us identify the individual body parts.
+    // Inspect individual meshes
+
+    let meshIndex = 0;
 
     model.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+
+      object.userData.meshIndex = meshIndex;
+
       console.log(
-        'Model Object:',
-        object.name,
-        '| Type:',
-        object.type
+        `Mesh ${meshIndex}: ${object.name}`
       );
+
+      meshIndex++;
     });
 
-    // --------------------------------------------------------
-    // Calculate the model's size
-    // --------------------------------------------------------
+    // Align the fly's anatomical front with -Z
+
+    model.rotation.y = Math.PI;
+
+    // Calculate model size
 
     const box = new THREE.Box3().setFromObject(model);
     const size = new THREE.Vector3();
+
     box.getSize(size);
 
-
-    // --------------------------------------------------------
-    // Scale the model
-    // --------------------------------------------------------
-
-    // Make the fly a reasonable size for our environment.
+    // Scale model
 
     const largestDimension = Math.max(
       size.x,
@@ -184,16 +157,12 @@ loader.load(
 
     if (largestDimension > 0) {
       const targetSize = 1.5;
-
       const scale = targetSize / largestDimension;
 
       model.scale.setScalar(scale);
     }
 
-
-    // --------------------------------------------------------
     // Recalculate bounding box after scaling
-    // --------------------------------------------------------
 
     const scaledBox = new THREE.Box3().setFromObject(model);
 
@@ -201,33 +170,51 @@ loader.load(
 
     scaledBox.getCenter(center);
 
-
-    // --------------------------------------------------------
-    // Center the model inside the fly group
-    // --------------------------------------------------------
+    // Center model inside fly group
 
     model.position.x -= center.x;
     model.position.z -= center.z;
 
-
-    // Put the bottom of the fly near the group's origin.
+    // Place bottom of fly near the group's origin
 
     model.position.y -= scaledBox.min.y;
 
-
-    // --------------------------------------------------------
     // Add model to fly group
-    // --------------------------------------------------------
 
     fly.add(model);
 
+    // Allow individual fly parts to be selected
 
-    // --------------------------------------------------------
-    // Create controller
-    // --------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('click', (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersections = raycaster.intersectObjects(
+    model.children,
+    true
+  );
+
+  if (intersections.length === 0) return;
+
+  const selected = intersections[0].object;
+
+  if (!(selected instanceof THREE.Mesh)) return;
+
+  console.log(
+    'Selected mesh:',
+    selected.userData.meshIndex,
+    selected.name
+  );
+});
+
+    // Create fly controller
 
     flyController = new FlyController(fly);
-
 
     console.log('Drosophila model loaded successfully.');
   },
@@ -242,18 +229,12 @@ loader.load(
   }
 );
 
-
-// ============================================================
-// 9. MOUSE CAMERA CONTROL
-// ============================================================
-
-renderer.domElement.addEventListener('click', () => {
+// Mouse camera control
+/*renderer.domElement.addEventListener('click', () => {
   renderer.domElement.requestPointerLock();
-});
-
+});*/
 
 document.addEventListener('mousemove', (event) => {
-
   if (
     document.pointerLockElement !==
     renderer.domElement
@@ -261,11 +242,9 @@ document.addEventListener('mousemove', (event) => {
     return;
   }
 
-
   yaw -= event.movementX * mouseSensitivity;
 
   pitch -= event.movementY * mouseSensitivity;
-
 
   const maxPitch = Math.PI / 2 - 0.1;
 
@@ -275,13 +254,9 @@ document.addEventListener('mousemove', (event) => {
   );
 });
 
-
-// ============================================================
-// 10. HANDLE BROWSER RESIZING
-// ============================================================
+// Handle browser resizing
 
 window.addEventListener('resize', () => {
-
   camera.aspect =
     window.innerWidth /
     window.innerHeight;
@@ -294,31 +269,18 @@ window.addEventListener('resize', () => {
   );
 });
 
-
-// ============================================================
-// 11. CAMERA MOVEMENT SETTINGS
-// ============================================================
+// Camera movement settings
 
 const moveSpeed = 0.08;
 
-
-// ============================================================
-// 12. MAIN SIMULATION LOOP
-// ============================================================
+// Main simulation loop
 
 function animate() {
-
   requestAnimationFrame(animate);
 
-
-  // ==========================================================
-  // FLY CONTROL
-  // ==========================================================
-
-  // Only control the fly after the model has loaded.
+  // Fly control
 
   if (flyController) {
-
     if (keys['i']) {
       flyController.move('forward');
     }
@@ -343,15 +305,10 @@ function animate() {
       flyController.move('down');
     }
 
-
-    // Update velocity, position and drag.
     flyController.update();
   }
 
-
-  // ==========================================================
-  // CAMERA-RELATIVE MOVEMENT
-  // ==========================================================
+  // Camera-relative movement
 
   const forward = new THREE.Vector3();
 
@@ -361,7 +318,6 @@ function animate() {
 
   forward.normalize();
 
-
   const right = new THREE.Vector3();
 
   right.crossVectors(
@@ -369,67 +325,36 @@ function animate() {
     camera.up
   ).normalize();
 
+  // Camera keyboard movement
 
-  // ==========================================================
-  // CAMERA KEYBOARD MOVEMENT
-  // ==========================================================
-
-  if (keys['w'] || keys['arrowup']) {
-    camera.position.addScaledVector(
-      forward,
-      moveSpeed
-    );
+  if (keys['w'] || keys['arrowup']) 
+  {
+    camera.position.addScaledVector(forward, moveSpeed);
   }
 
-
-  if (keys['s'] || keys['arrowdown']) {
-    camera.position.addScaledVector(
-      forward,
-      -moveSpeed
-    );
+  if (keys['s'] || keys['arrowdown']) 
+  {
+    camera.position.addScaledVector(forward, -moveSpeed);
   }
 
-
-  if (keys['a'] || keys['arrowleft']) {
-    camera.position.addScaledVector(
-      right,
-      -moveSpeed
-    );
+  if (keys['a'] || keys['arrowleft']) 
+  {
+    camera.position.addScaledVector(right,-moveSpeed);
   }
 
-
-  if (keys['d'] || keys['arrowright']) {
-    camera.position.addScaledVector(
-      right,
-      moveSpeed
-    );
+  if (keys['d'] || keys['arrowright']) 
+  {
+    camera.position.addScaledVector(right,moveSpeed);
   }
 
-
-  // ==========================================================
-  // CAMERA ROTATION
-  // ==========================================================
-
+  // Camera rotation
   camera.rotation.order = 'YXZ';
-
   camera.rotation.y = yaw;
-
   camera.rotation.x = pitch;
 
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
-
-  renderer.render(
-    scene,
-    camera
-  );
+  // Render scene
+  renderer.render(scene,camera);
 }
 
-
-// ============================================================
-// 13. START SIMULATION
-// ============================================================
-
+// Start simulation
 animate();

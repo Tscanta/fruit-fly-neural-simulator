@@ -258,14 +258,14 @@ loader.load(
         rightWingPivot.position.copy(   
           rightPivotLocal
         );
-        leftWingPivot.position.z += 3;
-        rightWingPivot.position.z += 3;
+        leftWingPivot.position.z += 3.28;
+        rightWingPivot.position.z += 4.3;
 
-        leftWingPivot.position.x -= 0.5;
-        leftWingPivot.position.y -= 0.03;
+        leftWingPivot.position.x -= 0.3;
+        leftWingPivot.position.y += 0.35;
 
-        rightWingPivot.position.x -= 0.12;
-        rightWingPivot.position.y -= 0.03;
+        rightWingPivot.position.x += 0.15;
+        rightWingPivot.position.y += 0.32;
 
       const pivotGeometry =
         new THREE.SphereGeometry(

@@ -122,33 +122,43 @@ loader.load(
 
     // Inspect individual meshes
 
-    let meshIndex = 0;
+let meshIndex = 0;
 
-    model.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
+model.traverse((object) => {
+  if (!(object instanceof THREE.Mesh)) return;
 
-      object.userData.meshIndex = meshIndex;
+  object.userData.meshIndex = meshIndex;
 
-      console.log(
-        `Mesh ${meshIndex}: ${object.name}`
-      );
+  // Highlight unknown meshes
+  if (
+    meshIndex === 1 ||
+    meshIndex === 2 
+  ) {
+    if (Array.isArray(object.material)) {
+      object.material = object.material.map((material) => {
+        const clonedMaterial = material.clone();
+        clonedMaterial.color.set(0xff0000);
+        return clonedMaterial;
+      });
+    } else {
+      object.material = object.material.clone();
+      object.material.color.set(0xff0000);
+    }
+  }
 
-      meshIndex++;
-    });
+  meshIndex++;
+});
 
+    
     // Align the fly's anatomical front with -Z
-
     model.rotation.y = Math.PI;
 
     // Calculate model size
-
     const box = new THREE.Box3().setFromObject(model);
     const size = new THREE.Vector3();
-
     box.getSize(size);
 
     // Scale model
-
     const largestDimension = Math.max(
       size.x,
       size.y,

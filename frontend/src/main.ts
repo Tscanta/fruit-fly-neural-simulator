@@ -25,7 +25,7 @@ window.addEventListener('keyup', (event) => {
 let yaw = 0;
 let pitch = 0;
 
-const mouseSensitivity = 0.003;
+const mouseSensitivity = 0.001;
 
 // Create scene
 
@@ -458,7 +458,7 @@ loader.load(
 );
 
 // Mouse camera control
-let isMouseDown = false;
+/*let isMouseDown = false;
 
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -496,11 +496,11 @@ window.addEventListener('mousemove', (event) => {
     -maxPitch,
     Math.min(maxPitch, pitch)
   );
-});
-
-/*renderer.domElement.addEventListener('click', () => {
-  renderer.domElement.requestPointerLock();
 });*/
+
+renderer.domElement.addEventListener('click', () => {
+  renderer.domElement.requestPointerLock();
+});
 
 
 
@@ -541,7 +541,7 @@ window.addEventListener('resize', () => {
 
 // Camera movement settings
 
-const moveSpeed = 0.08;
+const moveSpeed = 0.04;
 
 // Main simulation loop
 
@@ -621,6 +621,13 @@ function animate() {
   if (keys['d'] || keys['arrowright'])
   {
     camera.position.addScaledVector(right,moveSpeed);
+  }
+  if (keys['shift']) {
+  camera.position.y += moveSpeed;
+  }
+
+  if (keys['control']) {
+    camera.position.y -= moveSpeed;
   }
 
   // Camera rotation

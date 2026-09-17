@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import './style.css';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FlyController } from './fly/FlyController';
+import { WingController } from './fly/WingController';
 
 // Keyboard input
 
@@ -114,42 +115,261 @@ const loader = new GLTFLoader();
 
 let flyController: FlyController | null = null;
 
+let wingController: WingController | null = null;
+
+const clock = new THREE.Clock();
+
 loader.load(
   '/models/drosophila/scene.gltf',
 
   (gltf) => {
     const model = gltf.scene;
+          const leftWing =
+      model.getObjectByName('Object_8');
+
+    const rightWing =
+      model.getObjectByName('Object_10');
+
+    const leftThorax =
+      model.getObjectByName('Object_17');
+
+    const rightThorax =
+      model.getObjectByName('Object_16');
+
+    if (
+      leftWing &&
+      rightWing &&
+      leftThorax &&
+      rightThorax
+    ) {
+      const wingsGroup =
+        new THREE.Group();
+
+      wingsGroup.name =
+        'Wings';
+
+      const leftWingPivot =
+        new THREE.Group();
+
+      leftWingPivot.name =
+        'LeftWingPivot';
+
+      const rightWingPivot =
+        new THREE.Group();
+
+      rightWingPivot.name =
+        'RightWingPivot';
+
+      model.add(
+        wingsGroup
+      );
+
+      wingsGroup.add(
+        leftWingPivot
+      );
+
+      wingsGroup.add(
+        rightWingPivot
+      );
+
+      model.updateMatrixWorld(true);
+
+      const leftWingBox =
+        new THREE.Box3().setFromObject(
+          leftWing
+        );
+
+      const rightWingBox =
+        new THREE.Box3().setFromObject(
+          rightWing
+        );
+
+      const leftThoraxBox =
+        new THREE.Box3().setFromObject(
+          leftThorax
+        );
+
+      const rightThoraxBox =
+        new THREE.Box3().setFromObject(
+          rightThorax
+        );
+
+      const leftWingCenter =
+        new THREE.Vector3();
+
+      const rightWingCenter =
+        new THREE.Vector3();
+
+      leftWingBox.getCenter(
+        leftWingCenter
+      );
+
+      rightWingBox.getCenter(
+        rightWingCenter
+      );
+
+      const leftPivotWorld =
+        new THREE.Vector3();
+
+      const rightPivotWorld =
+        new THREE.Vector3();
+
+      leftThoraxBox.clampPoint(
+        leftWingCenter,
+        leftPivotWorld
+      );
+
+      rightThoraxBox.clampPoint(
+        rightWingCenter,
+        rightPivotWorld
+      );
+
+      const leftPivotLocal =
+        model.worldToLocal(
+          leftPivotWorld.clone()
+        );
+
+      const rightPivotLocal =
+        model.worldToLocal(
+          rightPivotWorld.clone()
+        );
+
+      const wingsGroupInverse =
+        new THREE.Matrix4()
+          .copy(wingsGroup.matrixWorld)
+          .invert();
+
+      leftPivotLocal.copy(
+        leftPivotWorld
+      ).applyMatrix4(
+        wingsGroupInverse
+      );
+
+      rightPivotLocal.copy(
+        rightPivotWorld
+      ).applyMatrix4(
+        wingsGroupInverse
+      );
+
+        leftWingPivot.position.copy(
+          leftPivotLocal
+        );
+
+        rightWingPivot.position.copy(   
+          rightPivotLocal
+        );
+        leftWingPivot.position.z += 3;
+        rightWingPivot.position.z += 3;
+
+        leftWingPivot.position.x -= 0.5;
+        leftWingPivot.position.y -= 0.03;
+
+        rightWingPivot.position.x -= 0.12;
+        rightWingPivot.position.y -= 0.03;
+
+      const pivotGeometry =
+        new THREE.SphereGeometry(
+          0.05,
+          16,
+          16
+        );
+
+      const leftPivotMaterial =
+        new THREE.MeshBasicMaterial({
+          color: 0x00ff00
+        });
+
+      const rightPivotMaterial =
+        new THREE.MeshBasicMaterial({
+          color: 0x0000ff
+        });
+
+      const leftPivotMarker =
+        new THREE.Mesh(
+          pivotGeometry,
+          leftPivotMaterial
+        );
+
+      const rightPivotMarker =
+        new THREE.Mesh(
+          pivotGeometry,
+          rightPivotMaterial
+        );
+
+      leftWingPivot.add(
+        leftPivotMarker
+      );
+
+      rightWingPivot.add(
+        rightPivotMarker
+      );
+
+      const leftAxes =
+        new THREE.AxesHelper(
+          0.25
+        );
+
+      const rightAxes =
+        new THREE.AxesHelper(
+          0.25
+        );
+
+      leftWingPivot.add(
+        leftAxes
+      );
+
+      rightWingPivot.add(
+        rightAxes
+      );
+
+      console.log(
+        'Left wing pivot:',
+        leftWingPivot.position
+      );
+
+      console.log(
+        'Right wing pivot:',
+        rightWingPivot.position
+      );
+
+      console.log(
+        'Wing pivot markers created successfully.'
+      );
+    } else {
+      console.warn(
+        'Could not find wings or thorax meshes.'
+      );
+    }
 
     // Inspect individual meshes
 
-let meshIndex = 0;
+    let meshIndex = 0;
 
-model.traverse((object) => {
-  if (!(object instanceof THREE.Mesh)) return;
+    model.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
 
-  object.userData.meshIndex = meshIndex;
+      object.userData.meshIndex = meshIndex;
 
-  // Highlight unknown meshes
-  if (
-    meshIndex === 1 ||
-    meshIndex === 2 
-  ) {
-    if (Array.isArray(object.material)) {
-      object.material = object.material.map((material) => {
-        const clonedMaterial = material.clone();
-        clonedMaterial.color.set(0xff0000);
-        return clonedMaterial;
-      });
-    } else {
-      object.material = object.material.clone();
-      object.material.color.set(0xff0000);
-    }
-  }
+      // Highlight unknown meshes
+      if (
+        meshIndex === 1 ||
+        meshIndex === 2
+      ) {
+        if (Array.isArray(object.material)) {
+          object.material = object.material.map((material) => {
+            const clonedMaterial = material.clone();
+            clonedMaterial.color.set(0xff0000);
+            return clonedMaterial;
+          });
+        } else {
+          object.material = object.material.clone();
+          object.material.color.set(0xff0000);
+        }
+      }
 
-  meshIndex++;
-});
+      meshIndex++;
+    });
 
-    
     // Align the fly's anatomical front with -Z
     model.rotation.y = Math.PI;
 
@@ -195,32 +415,32 @@ model.traverse((object) => {
 
     // Allow individual fly parts to be selected
 
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
 
-renderer.domElement.addEventListener('click', (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    renderer.domElement.addEventListener('click', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, camera);
+      raycaster.setFromCamera(mouse, camera);
 
-  const intersections = raycaster.intersectObjects(
-    model.children,
-    true
-  );
+      const intersections = raycaster.intersectObjects(
+        model.children,
+        true
+      );
 
-  if (intersections.length === 0) return;
+      if (intersections.length === 0) return;
 
-  const selected = intersections[0].object;
+      const selected = intersections[0].object;
 
-  if (!(selected instanceof THREE.Mesh)) return;
+      if (!(selected instanceof THREE.Mesh)) return;
 
-  console.log(
-    'Selected mesh:',
-    selected.userData.meshIndex,
-    selected.name
-  );
-});
+      console.log(
+        'Selected mesh:',
+        selected.userData.meshIndex,
+        selected.name
+      );
+    });
 
     // Create fly controller
 
@@ -288,6 +508,12 @@ const moveSpeed = 0.08;
 function animate() {
   requestAnimationFrame(animate);
 
+  const deltaTime = clock.getDelta();
+
+  // if (wingController) {
+  //   wingController.update(deltaTime);
+  // }
+
   // Fly control
 
   if (flyController) {
@@ -337,22 +563,22 @@ function animate() {
 
   // Camera keyboard movement
 
-  if (keys['w'] || keys['arrowup']) 
+  if (keys['w'] || keys['arrowup'])
   {
     camera.position.addScaledVector(forward, moveSpeed);
   }
 
-  if (keys['s'] || keys['arrowdown']) 
+  if (keys['s'] || keys['arrowdown'])
   {
     camera.position.addScaledVector(forward, -moveSpeed);
   }
 
-  if (keys['a'] || keys['arrowleft']) 
+  if (keys['a'] || keys['arrowleft'])
   {
     camera.position.addScaledVector(right,-moveSpeed);
   }
 
-  if (keys['d'] || keys['arrowright']) 
+  if (keys['d'] || keys['arrowright'])
   {
     camera.position.addScaledVector(right,moveSpeed);
   }

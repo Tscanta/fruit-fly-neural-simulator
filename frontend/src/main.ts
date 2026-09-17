@@ -79,7 +79,6 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 // Create lighting
-
 const ambientLight = new THREE.AmbientLight(
   0xffffff,
   2
@@ -101,7 +100,6 @@ directionalLight.position.set(
 scene.add(directionalLight);
 
 // Create fly controller group
-
 const fly = new THREE.Group();
 
 fly.position.set(0, 0.5, 0);
@@ -125,6 +123,7 @@ loader.load(
 let meshIndex = 0;
 
 model.traverse((object) => {
+
   if (!(object instanceof THREE.Mesh)) return;
 
   object.userData.meshIndex = meshIndex;

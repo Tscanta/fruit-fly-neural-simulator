@@ -25,7 +25,7 @@ window.addEventListener('keyup', (event) => {
 let yaw = 0;
 let pitch = 0;
 
-const mouseSensitivity = 0.002;
+const mouseSensitivity = 0.003;
 
 // Create scene
 
@@ -460,9 +460,51 @@ loader.load(
 );
 
 // Mouse camera control
+let isMouseDown = false;
+
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+// Mouse camera control
+
+renderer.domElement.addEventListener('mousedown', (event) => {
+  if (event.button !== 0) return;
+
+  isMouseDown = true;
+
+  lastMouseX = event.clientX;
+  lastMouseY = event.clientY;
+});
+
+window.addEventListener('mouseup', () => {
+  isMouseDown = false;
+});
+
+window.addEventListener('mousemove', (event) => {
+  if (!isMouseDown) return;
+
+  const deltaX = event.clientX - lastMouseX;
+  const deltaY = event.clientY - lastMouseY;
+
+  lastMouseX = event.clientX;
+  lastMouseY = event.clientY;
+
+  yaw -= deltaX * mouseSensitivity;
+  pitch -= deltaY * mouseSensitivity;
+
+  const maxPitch = Math.PI / 2 - 0.1;
+
+  pitch = Math.max(
+    -maxPitch,
+    Math.min(maxPitch, pitch)
+  );
+});
+
 /*renderer.domElement.addEventListener('click', () => {
   renderer.domElement.requestPointerLock();
 });*/
+
+
 
 document.addEventListener('mousemove', (event) => {
   if (

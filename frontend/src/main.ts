@@ -1,12 +1,13 @@
-// FLY BRAIN PROJECT
-// Phase 1 — 3D Simulation Environment
-// Step 6C — Fly Model Inspection
-
 import * as THREE from 'three';
+
 import './style.css';
+
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 import { FlyController } from './fly/FlyController';
+
 import { WingController } from './fly/WingController';
+
 
 // Keyboard input
 
@@ -20,6 +21,7 @@ window.addEventListener('keyup', (event) => {
   keys[event.key.toLowerCase()] = false;
 });
 
+
 // Camera rotation
 
 let yaw = 0;
@@ -27,11 +29,13 @@ let pitch = 0;
 
 const mouseSensitivity = 0.001;
 
+
 // Create scene
 
 const scene = new THREE.Scene();
 
 scene.background = new THREE.Color(0xffffff);
+
 
 // Create camera
 
@@ -43,6 +47,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 camera.position.set(0, 2, 5);
+
 
 // Create renderer
 
@@ -60,38 +65,47 @@ renderer.setPixelRatio(
 );
 
 document.body.appendChild(renderer.domElement);
+
 const clock = new THREE.Clock();
+
 
 // Create floor
 
-const floorGeometry = new THREE.PlaneGeometry(20, 20);
+const floorGeometry =
+  new THREE.PlaneGeometry(20, 20);
 
-const floorMaterial = new THREE.MeshBasicMaterial({
-  color: 0xf5f5f5,
-  side: THREE.DoubleSide
-});
+const floorMaterial =
+  new THREE.MeshBasicMaterial({
+    color: 0xf5f5f5,
+    side: THREE.DoubleSide
+  });
 
-const floor = new THREE.Mesh(
-  floorGeometry,
-  floorMaterial
-);
+const floor =
+  new THREE.Mesh(
+    floorGeometry,
+    floorMaterial
+  );
 
 floor.rotation.x = -Math.PI / 2;
 
 scene.add(floor);
 
+
 // Create lighting
-const ambientLight = new THREE.AmbientLight(
-  0xffffff,
-  2
-);
+
+const ambientLight =
+  new THREE.AmbientLight(
+    0xffffff,
+    2
+  );
 
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(
-  0xffffff,
-  3
-);
+const directionalLight =
+  new THREE.DirectionalLight(
+    0xffffff,
+    3
+  );
 
 directionalLight.position.set(
   5,
@@ -101,38 +115,334 @@ directionalLight.position.set(
 
 scene.add(directionalLight);
 
+
 // Create fly controller group
+
 const fly = new THREE.Group();
 
-fly.position.set(0, 0.5, 0);
+fly.position.set(
+  0,
+  0.5,
+  0
+);
 
 scene.add(fly);
 
+
 // Load Drosophila model
 
-const loader = new GLTFLoader();
+const loader =
+  new GLTFLoader();
 
-let flyController: FlyController | null = null;
+let flyController:
+  FlyController | null = null;
 
-let wingController: WingController | null = null;
+let wingController:
+  WingController | null = null;
 
+
+// Extract one connected geometry component
+
+function extractOneComponent(
+  mesh: THREE.Mesh,
+  componentIndex: number
+) {
+  const geometry =
+    mesh.geometry;
+
+  const position =
+    geometry.attributes.position;
+
+  const index =
+    geometry.index;
+
+  if (!index) {
+    console.error(
+      `${mesh.name} has no index buffer.`
+    );
+
+    return null;
+  }
+
+  const parent =
+    new Int32Array(
+      position.count
+    );
+
+  const size =
+    new Int32Array(
+      position.count
+    );
+
+  for (
+    let i = 0;
+    i < position.count;
+    i++
+  ) {
+    parent[i] = i;
+    size[i] = 1;
+  }
+
+  function find(
+    x: number
+  ): number {
+    while (
+      parent[x] !== x
+    ) {
+      parent[x] =
+        parent[parent[x]];
+
+      x = parent[x];
+    }
+
+    return x;
+  }
+
+  function union(
+    a: number,
+    b: number
+  ) {
+    let rootA = find(a);
+    let rootB = find(b);
+
+    if (
+      rootA === rootB
+    ) {
+      return;
+    }
+
+    if (
+      size[rootA] <
+      size[rootB]
+    ) {
+      [
+        rootA,
+        rootB
+      ] = [
+        rootB,
+        rootA
+      ];
+    }
+
+    parent[rootB] =
+      rootA;
+
+    size[rootA] +=
+      size[rootB];
+  }
+
+  for (
+    let i = 0;
+    i < index.count;
+    i += 3
+  ) {
+    const a =
+      index.getX(i);
+
+    const b =
+      index.getX(i + 1);
+
+    const c =
+      index.getX(i + 2);
+
+    union(a, b);
+    union(b, c);
+    union(c, a);
+  }
+
+  const components =
+    new Map<
+      number,
+      number[]
+    >();
+
+  for (
+    let i = 0;
+    i < position.count;
+    i++
+  ) {
+    const root =
+      find(i);
+
+    if (
+      !components.has(root)
+    ) {
+      components.set(
+        root,
+        []
+      );
+    }
+
+    components
+      .get(root)!
+      .push(i);
+  }
+
+  const sortedComponents =
+    [
+      ...components.values()
+    ].sort(
+      (a, b) =>
+        b.length - a.length
+    );
+
+  const component =
+    sortedComponents[
+      componentIndex
+    ];
+
+  if (!component) {
+    console.error(
+      'Component not found:',
+      componentIndex
+    );
+
+    return null;
+  }
+
+  const vertexMap =
+    new Map<
+      number,
+      number
+    >();
+
+  const positions:
+    number[] = [];
+
+  const indices:
+    number[] = [];
+
+  for (
+    const vertexIndex
+    of component
+  ) {
+    vertexMap.set(
+      vertexIndex,
+      positions.length / 3
+    );
+
+    positions.push(
+      position.getX(
+        vertexIndex
+      ),
+      position.getY(
+        vertexIndex
+      ),
+      position.getZ(
+        vertexIndex
+      )
+    );
+  }
+
+  for (
+    let i = 0;
+    i < index.count;
+    i += 3
+  ) {
+    const a =
+      index.getX(i);
+
+    const b =
+      index.getX(i + 1);
+
+    const c =
+      index.getX(i + 2);
+
+    if (
+      vertexMap.has(a) &&
+      vertexMap.has(b) &&
+      vertexMap.has(c)
+    ) {
+      indices.push(
+        vertexMap.get(a)!,
+        vertexMap.get(b)!,
+        vertexMap.get(c)!
+      );
+    }
+  }
+
+  const componentGeometry =
+    new THREE.BufferGeometry();
+
+  componentGeometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(
+      positions,
+      3
+    )
+  );
+
+  componentGeometry.setIndex(
+    indices
+  );
+
+  componentGeometry.computeVertexNormals();
+
+  const material =
+    Array.isArray(mesh.material)
+      ? mesh.material[0].clone()
+      : mesh.material.clone();
+
+  const componentMesh =
+    new THREE.Mesh(
+      componentGeometry,
+      material
+    );
+
+  componentMesh.name =
+    `${mesh.name}_component_${componentIndex}`;
+
+  componentMesh.position.copy(
+    mesh.position
+  );
+
+  componentMesh.quaternion.copy(
+    mesh.quaternion
+  );
+
+  componentMesh.scale.copy(
+    mesh.scale
+  );
+
+  mesh.parent?.add(
+    componentMesh
+  );
+
+  return componentMesh;
+}
+
+
+// Load model
 
 loader.load(
   '/models/drosophila/scene.gltf',
 
   (gltf) => {
-    const model = gltf.scene;
-          const leftWing =
-      model.getObjectByName('Object_8');
+    const model =
+      gltf.scene;
+
+
+    // Wing setup
+
+    const leftWing =
+      model.getObjectByName(
+        'Object_8'
+      );
 
     const rightWing =
-      model.getObjectByName('Object_10');
+      model.getObjectByName(
+        'Object_10'
+      );
 
     const leftThorax =
-      model.getObjectByName('Object_17');
+      model.getObjectByName(
+        'Object_17'
+      );
 
     const rightThorax =
-      model.getObjectByName('Object_16');
+      model.getObjectByName(
+        'Object_16'
+      );
 
     if (
       leftWing &&
@@ -170,27 +480,33 @@ loader.load(
         rightWingPivot
       );
 
-      model.updateMatrixWorld(true);
+      model.updateMatrixWorld(
+        true
+      );
 
       const leftWingBox =
-        new THREE.Box3().setFromObject(
-          leftWing
-        );
+        new THREE.Box3()
+          .setFromObject(
+            leftWing
+          );
 
       const rightWingBox =
-        new THREE.Box3().setFromObject(
-          rightWing
-        );
+        new THREE.Box3()
+          .setFromObject(
+            rightWing
+          );
 
       const leftThoraxBox =
-        new THREE.Box3().setFromObject(
-          leftThorax
-        );
+        new THREE.Box3()
+          .setFromObject(
+            leftThorax
+          );
 
       const rightThoraxBox =
-        new THREE.Box3().setFromObject(
-          rightThorax
-        );
+        new THREE.Box3()
+          .setFromObject(
+            rightThorax
+          );
 
       const leftWingCenter =
         new THREE.Vector3();
@@ -222,48 +538,52 @@ loader.load(
         rightPivotWorld
       );
 
-      const leftPivotLocal =
-        model.worldToLocal(
-          leftPivotWorld.clone()
-        );
-
-      const rightPivotLocal =
-        model.worldToLocal(
-          rightPivotWorld.clone()
-        );
-
       const wingsGroupInverse =
         new THREE.Matrix4()
-          .copy(wingsGroup.matrixWorld)
+          .copy(
+            wingsGroup.matrixWorld
+          )
           .invert();
 
-      leftPivotLocal.copy(
+      const leftPivotLocal =
         leftPivotWorld
-      ).applyMatrix4(
-        wingsGroupInverse
-      );
+          .clone()
+          .applyMatrix4(
+            wingsGroupInverse
+          );
 
-      rightPivotLocal.copy(
+      const rightPivotLocal =
         rightPivotWorld
-      ).applyMatrix4(
-        wingsGroupInverse
+          .clone()
+          .applyMatrix4(
+            wingsGroupInverse
+          );
+
+      leftWingPivot.position.copy(
+        leftPivotLocal
       );
 
-        leftWingPivot.position.copy(
-          leftPivotLocal
-        );
+      rightWingPivot.position.copy(
+        rightPivotLocal
+      );
 
-        rightWingPivot.position.copy(   
-          rightPivotLocal
-        );
-        leftWingPivot.position.z += 3.28;
-        rightWingPivot.position.z += 4.3;
+      leftWingPivot.position.z +=
+        3.28;
 
-        leftWingPivot.position.x -= 0.3;
-        leftWingPivot.position.y += 0.35;
+      rightWingPivot.position.z +=
+        4.3;
 
-        rightWingPivot.position.x += 0.15;
-        rightWingPivot.position.y += 0.32;
+      leftWingPivot.position.x -=
+        0.3;
+
+      leftWingPivot.position.y +=
+        0.35;
+
+      rightWingPivot.position.x +=
+        0.15;
+
+      rightWingPivot.position.y +=
+        0.32;
 
       const pivotGeometry =
         new THREE.SphereGeometry(
@@ -272,26 +592,20 @@ loader.load(
           16
         );
 
-      const leftPivotMaterial =
-        new THREE.MeshBasicMaterial({
-          color: 0x00ff00
-        });
-
-      const rightPivotMaterial =
-        new THREE.MeshBasicMaterial({
-          color: 0x0000ff
-        });
-
       const leftPivotMarker =
         new THREE.Mesh(
           pivotGeometry,
-          leftPivotMaterial
+          new THREE.MeshBasicMaterial({
+            color: 0x00ff00
+          })
         );
 
       const rightPivotMarker =
         new THREE.Mesh(
           pivotGeometry,
-          rightPivotMaterial
+          new THREE.MeshBasicMaterial({
+            color: 0x0000ff
+          })
         );
 
       leftWingPivot.add(
@@ -339,112 +653,291 @@ loader.load(
       );
     }
 
+
     // Inspect individual meshes
 
     let meshIndex = 0;
 
-    model.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) return;
-
-      object.userData.meshIndex = meshIndex;
-
-      // Highlight unknown meshes
-      if (
-        meshIndex === 1 ||
-        meshIndex === 2
-      ) {
-        if (Array.isArray(object.material)) {
-          object.material = object.material.map((material) => {
-            const clonedMaterial = material.clone();
-            clonedMaterial.color.set(0xff0000);
-            return clonedMaterial;
-          });
-        } else {
-          object.material = object.material.clone();
-          object.material.color.set(0xff0000);
+    model.traverse(
+      (object) => {
+        if (
+          !(object instanceof THREE.Mesh)
+        ) {
+          return;
         }
+
+        object.userData.meshIndex =
+          meshIndex;
+
+        if (
+          meshIndex === 1 ||
+          meshIndex === 2
+        ) {
+          if (
+            Array.isArray(
+              object.material
+            )
+          ) {
+            object.material =
+              object.material.map(
+                (material) => {
+                  const clonedMaterial =
+                    material.clone();
+
+                  clonedMaterial.color.set(
+                    0xff0000
+                  );
+
+                  return clonedMaterial;
+                }
+              );
+          } else {
+            object.material =
+              object.material.clone();
+
+            object.material.color.set(
+              0xff0000
+            );
+          }
+        }
+
+        meshIndex++;
       }
-
-      meshIndex++;
-    });
-
-    // Align the fly's anatomical front with -Z
-    model.rotation.y = Math.PI;
-
-    // Calculate model size
-    const box = new THREE.Box3().setFromObject(model);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-
-    // Scale model
-    const largestDimension = Math.max(
-      size.x,
-      size.y,
-      size.z
     );
 
-    if (largestDimension > 0) {
-      const targetSize = 1.5;
-      const scale = targetSize / largestDimension;
 
-      model.scale.setScalar(scale);
+    // Align anatomical front with -Z
+
+    model.rotation.y =
+      Math.PI;
+
+
+    // Calculate model size
+
+    const box =
+      new THREE.Box3()
+        .setFromObject(
+          model
+        );
+
+    const size =
+      new THREE.Vector3();
+
+    box.getSize(
+      size
+    );
+
+
+    // Scale model
+
+    const largestDimension =
+      Math.max(
+        size.x,
+        size.y,
+        size.z
+      );
+
+    if (
+      largestDimension > 0
+    ) {
+      const targetSize =
+        1.5;
+
+      const scale =
+        targetSize /
+        largestDimension;
+
+      model.scale.setScalar(
+        scale
+      );
     }
 
-    // Recalculate bounding box after scaling
 
-    const scaledBox = new THREE.Box3().setFromObject(model);
+    // Recalculate bounding box
 
-    const center = new THREE.Vector3();
+    const scaledBox =
+      new THREE.Box3()
+        .setFromObject(
+          model
+        );
 
-    scaledBox.getCenter(center);
+    const center =
+      new THREE.Vector3();
 
-    // Center model inside fly group
+    scaledBox.getCenter(
+      center
+    );
 
-    model.position.x -= center.x;
-    model.position.z -= center.z;
 
-    // Place bottom of fly near the group's origin
+    // Center model
 
-    model.position.y -= scaledBox.min.y;
+    model.position.x -=
+      center.x;
 
-    // Add model to fly group
+    model.position.z -=
+      center.z;
+
+
+    // Place bottom near origin
+
+    model.position.y -=
+      scaledBox.min.y;
+
+
+    // Add model to fly
 
     fly.add(model);
 
-    // Allow individual fly parts to be selected
 
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
+    // Update world transforms
 
-    renderer.domElement.addEventListener('click', (event) => {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    model.updateMatrixWorld(
+      true
+    );
 
-      raycaster.setFromCamera(mouse, camera);
 
-      const intersections = raycaster.intersectObjects(
-        model.children,
-        true
+    // Extract all six major leg components
+
+    const object12 =
+      model.getObjectByName(
+        'Object_12'
       );
 
-      if (intersections.length === 0) return;
+    const object13 =
+      model.getObjectByName(
+        'Object_13'
+      );
 
-      const selected = intersections[0].object;
+    if (
+      object12 instanceof THREE.Mesh &&
+      object13 instanceof THREE.Mesh
+    ) {
+      const legComponents = [
+        extractOneComponent(
+          object12,
+          0
+        ),
 
-      if (!(selected instanceof THREE.Mesh)) return;
+        extractOneComponent(
+          object12,
+          1
+        ),
+
+        extractOneComponent(
+          object12,
+          2
+        ),
+
+        extractOneComponent(
+          object12,
+          3
+        ),
+
+        extractOneComponent(
+          object13,
+          0
+        ),
+
+        extractOneComponent(
+          object13,
+          1
+        )
+      ];
+
+      for (
+        const leg of legComponents
+      ) {
+        if (!leg) {
+          continue;
+        }
+
+        leg.material =
+          new THREE.MeshBasicMaterial({
+            color: 0xff0000
+          });
+      }
 
       console.log(
-        'Selected mesh:',
-        selected.userData.meshIndex,
-        selected.name
+        'Six leg components extracted:',
+        legComponents
       );
-    });
+    } else {
+      console.warn(
+        'Could not find Object_12 or Object_13.'
+      );
+    }
+
+
+    // Allow individual fly parts to be selected
+
+    const raycaster =
+      new THREE.Raycaster();
+
+    const mouse =
+      new THREE.Vector2();
+
+    renderer.domElement.addEventListener(
+      'click',
+      (event) => {
+        mouse.x =
+          (event.clientX /
+            window.innerWidth) *
+          2 -
+          1;
+
+        mouse.y =
+          -(
+            event.clientY /
+            window.innerHeight
+          ) *
+          2 +
+          1;
+
+        raycaster.setFromCamera(
+          mouse,
+          camera
+        );
+
+        const intersections =
+          raycaster.intersectObjects(
+            model.children,
+            true
+          );
+
+        if (
+          intersections.length === 0
+        ) {
+          return;
+        }
+
+        const selected =
+          intersections[0].object;
+
+        if (
+          !(selected instanceof THREE.Mesh)
+        ) {
+          return;
+        }
+
+        console.log(
+          'Selected mesh:',
+          selected.userData.meshIndex,
+          selected.name
+        );
+      }
+    );
+
 
     // Create fly controller
 
-    flyController = new FlyController(fly);
+    flyController =
+      new FlyController(
+        fly
+      );
 
-    console.log('Drosophila model loaded successfully.');
+    console.log(
+      'Drosophila model loaded successfully.'
+    );
   },
 
   undefined,
@@ -457,187 +950,304 @@ loader.load(
   }
 );
 
+
 // Mouse camera control
-/*let isMouseDown = false;
+
+/*
+let isMouseDown = false;
 
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-// Mouse camera control
+renderer.domElement.addEventListener(
+  'mousedown',
+  (event) => {
+    if (event.button !== 0) {
+      return;
+    }
 
-renderer.domElement.addEventListener('mousedown', (event) => {
-  if (event.button !== 0) return;
+    isMouseDown = true;
 
-  isMouseDown = true;
+    lastMouseX =
+      event.clientX;
 
-  lastMouseX = event.clientX;
-  lastMouseY = event.clientY;
-});
-
-window.addEventListener('mouseup', () => {
-  isMouseDown = false;
-});
-
-window.addEventListener('mousemove', (event) => {
-  if (!isMouseDown) return;
-
-  const deltaX = event.clientX - lastMouseX;
-  const deltaY = event.clientY - lastMouseY;
-
-  lastMouseX = event.clientX;
-  lastMouseY = event.clientY;
-
-  yaw -= deltaX * mouseSensitivity;
-  pitch -= deltaY * mouseSensitivity;
-
-  const maxPitch = Math.PI / 2 - 0.1;
-
-  pitch = Math.max(
-    -maxPitch,
-    Math.min(maxPitch, pitch)
-  );
-});*/
-
-renderer.domElement.addEventListener('click', () => {
-  renderer.domElement.requestPointerLock();
-});
-
-
-
-document.addEventListener('mousemove', (event) => {
-  if (
-    document.pointerLockElement !==
-    renderer.domElement
-  ) {
-    return;
+    lastMouseY =
+      event.clientY;
   }
+);
 
-  yaw -= event.movementX * mouseSensitivity;
+window.addEventListener(
+  'mouseup',
+  () => {
+    isMouseDown = false;
+  }
+);
 
-  pitch -= event.movementY * mouseSensitivity;
+window.addEventListener(
+  'mousemove',
+  (event) => {
+    if (!isMouseDown) {
+      return;
+    }
 
-  const maxPitch = Math.PI / 2 - 0.1;
+    const deltaX =
+      event.clientX -
+      lastMouseX;
 
-  pitch = Math.max(
-    -maxPitch,
-    Math.min(maxPitch, pitch)
-  );
-});
+    const deltaY =
+      event.clientY -
+      lastMouseY;
+
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+
+    yaw -=
+      deltaX *
+      mouseSensitivity;
+
+    pitch -=
+      deltaY *
+      mouseSensitivity;
+
+    const maxPitch =
+      Math.PI / 2 - 0.1;
+
+    pitch =
+      Math.max(
+        -maxPitch,
+        Math.min(
+          maxPitch,
+          pitch
+        )
+      );
+  }
+);
+*/
+
+
+renderer.domElement.addEventListener(
+  'click',
+  () => {
+    renderer.domElement.requestPointerLock();
+  }
+);
+
+document.addEventListener(
+  'mousemove',
+  (event) => {
+    if (
+      document.pointerLockElement !==
+      renderer.domElement
+    ) {
+      return;
+    }
+
+    yaw -=
+      event.movementX *
+      mouseSensitivity;
+
+    pitch -=
+      event.movementY *
+      mouseSensitivity;
+
+    const maxPitch =
+      Math.PI / 2 - 0.1;
+
+    pitch =
+      Math.max(
+        -maxPitch,
+        Math.min(
+          maxPitch,
+          pitch
+        )
+      );
+  }
+);
+
 
 // Handle browser resizing
 
-window.addEventListener('resize', () => {
-  camera.aspect =
-    window.innerWidth /
-    window.innerHeight;
+window.addEventListener(
+  'resize',
+  () => {
+    camera.aspect =
+      window.innerWidth /
+      window.innerHeight;
 
-  camera.updateProjectionMatrix();
+    camera.updateProjectionMatrix();
 
-  renderer.setSize(
-    window.innerWidth,
-    window.innerHeight
-  );
-});
+    renderer.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+  }
+);
+
 
 // Camera movement settings
 
 const moveSpeed = 0.04;
 
+
 // Main simulation loop
 
 function animate() {
-  requestAnimationFrame(animate);
+  requestAnimationFrame(
+    animate
+  );
 
-  const deltaTime = clock.getDelta();
+  const deltaTime =
+    clock.getDelta();
+
+
+  // Wing control
 
   // if (wingController) {
   //   wingController.update(deltaTime);
   // }
 
+
   // Fly control
 
   if (flyController) {
     if (keys['i']) {
-      flyController.move('forward');
+      flyController.move(
+        'forward'
+      );
     }
 
     if (keys['k']) {
-      flyController.move('backward');
+      flyController.move(
+        'backward'
+      );
     }
 
     if (keys['j']) {
-      flyController.move('left');
+      flyController.move(
+        'left'
+      );
     }
 
     if (keys['l']) {
-      flyController.move('right');
+      flyController.move(
+        'right'
+      );
     }
 
     if (keys['u']) {
-      flyController.move('up');
+      flyController.move(
+        'up'
+      );
     }
 
     if (keys['o']) {
-      flyController.move('down');
+      flyController.move(
+        'down'
+      );
     }
 
-    flyController.update(deltaTime);
+    flyController.update(
+      deltaTime
+    );
   }
+
 
   // Camera-relative movement
 
-  const forward = new THREE.Vector3();
+  const forward =
+    new THREE.Vector3();
 
-  camera.getWorldDirection(forward);
+  camera.getWorldDirection(
+    forward
+  );
 
   forward.y = 0;
 
   forward.normalize();
 
-  const right = new THREE.Vector3();
+  const right =
+    new THREE.Vector3();
 
   right.crossVectors(
     forward,
     camera.up
   ).normalize();
 
-  // Camera keyboard movement
 
-  if (keys['w'] || keys['arrowup'])
-  {
-    camera.position.addScaledVector(forward, moveSpeed);
+  // Camera movement
+
+  if (
+    keys['w'] ||
+    keys['arrowup']
+  ) {
+    camera.position.addScaledVector(
+      forward,
+      moveSpeed
+    );
   }
 
-  if (keys['s'] || keys['arrowdown'])
-  {
-    camera.position.addScaledVector(forward, -moveSpeed);
+  if (
+    keys['s'] ||
+    keys['arrowdown']
+  ) {
+    camera.position.addScaledVector(
+      forward,
+      -moveSpeed
+    );
   }
 
-  if (keys['a'] || keys['arrowleft'])
-  {
-    camera.position.addScaledVector(right,-moveSpeed);
+  if (
+    keys['a'] ||
+    keys['arrowleft']
+  ) {
+    camera.position.addScaledVector(
+      right,
+      -moveSpeed
+    );
   }
 
-  if (keys['d'] || keys['arrowright'])
-  {
-    camera.position.addScaledVector(right,moveSpeed);
+  if (
+    keys['d'] ||
+    keys['arrowright']
+  ) {
+    camera.position.addScaledVector(
+      right,
+      moveSpeed
+    );
   }
+
   if (keys['shift']) {
-  camera.position.y += moveSpeed;
+    camera.position.y +=
+      moveSpeed;
   }
 
   if (keys['control']) {
-    camera.position.y -= moveSpeed;
+    camera.position.y -=
+      moveSpeed;
   }
 
-  // Camera rotation
-  camera.rotation.order = 'YXZ';
-  camera.rotation.y = yaw;
-  camera.rotation.x = pitch;
 
-  // Render scene
-  renderer.render(scene,camera);
+  // Camera rotation
+
+  camera.rotation.order =
+    'YXZ';
+
+  camera.rotation.y =
+    yaw;
+
+  camera.rotation.x =
+    pitch;
+
+
+  // Render
+
+  renderer.render(
+    scene,
+    camera
+  );
 }
 
+
 // Start simulation
+
 animate();

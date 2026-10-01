@@ -60,6 +60,7 @@ renderer.setPixelRatio(
 );
 
 document.body.appendChild(renderer.domElement);
+const clock = new THREE.Clock();
 
 // Create floor
 
@@ -115,7 +116,6 @@ let flyController: FlyController | null = null;
 
 let wingController: WingController | null = null;
 
-const clock = new THREE.Clock();
 
 loader.load(
   '/models/drosophila/scene.gltf',
@@ -581,7 +581,7 @@ function animate() {
       flyController.move('down');
     }
 
-    flyController.update();
+    flyController.update(deltaTime);
   }
 
   // Camera-relative movement

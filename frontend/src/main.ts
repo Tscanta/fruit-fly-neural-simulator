@@ -588,7 +588,7 @@ function animate() {
   const forward = new THREE.Vector3();
 
   camera.getWorldDirection(forward);
-git status
+
   forward.y = 0;
 
   forward.normalize();

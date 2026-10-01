@@ -250,7 +250,6 @@ loader.load(
       ).applyMatrix4(
         wingsGroupInverse
       );
-
         leftWingPivot.position.copy(
           leftPivotLocal
         );
@@ -552,9 +551,9 @@ function animate() {
 
   const deltaTime = clock.getDelta();
 
-  // if (wingController) {
-  //   wingController.update(deltaTime);
-  // }
+    if (wingController) {
+      wingController.update(deltaTime);
+    }
 
   // Fly control
 

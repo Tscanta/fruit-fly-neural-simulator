@@ -115,6 +115,29 @@ directionalLight.position.set(
 
 scene.add(directionalLight);
 
+// Pivot calibration grid
+
+const calibrationGrid =
+  new THREE.GridHelper(
+    10,
+    20,
+    0x000000,
+    0x888888
+  );
+
+calibrationGrid.name =
+  'PivotCalibrationGrid';
+
+scene.add(calibrationGrid);
+
+const calibrationAxes =
+  new THREE.AxesHelper(5);
+
+calibrationAxes.name =
+  'PivotCalibrationAxes';
+
+scene.add(calibrationAxes);
+
 
 // Create fly controller group
 
@@ -139,7 +162,6 @@ let flyController:
 
 let wingController:
   WingController | null = null;
-
 
 // Extract one connected geometry component
 
@@ -813,40 +835,15 @@ loader.load(
       object13 instanceof THREE.Mesh
     ) {
       const legComponents = [
-        extractOneComponent(
-          object12,
-          0
-        ),
-
-        extractOneComponent(
-          object12,
-          1
-        ),
-
-        extractOneComponent(
-          object12,
-          2
-        ),
-
-        extractOneComponent(
-          object12,
-          3
-        ),
-
-        extractOneComponent(
-          object13,
-          0
-        ),
-
-        extractOneComponent(
-          object13,
-          1
-        )
+        extractOneComponent(object12, 0),
+        extractOneComponent(object12, 1),
+        extractOneComponent(object12, 2),
+        extractOneComponent(object12, 3),
+        extractOneComponent(object13, 0),
+        extractOneComponent(object13, 1)
       ];
 
-      for (
-        const leg of legComponents
-      ) {
+      for (const leg of legComponents) {
         if (!leg) {
           continue;
         }
@@ -856,6 +853,299 @@ loader.load(
             color: 0xff0000
           });
       }
+
+      model.traverse((object) => {
+  if (!(object instanceof THREE.Mesh)) {
+    return;
+  }
+
+  const isLegComponent =
+    object.name.includes('_component_');
+
+  const isThorax =
+    object.name === 'Object_16' ||
+    object.name === 'Object_17';
+
+  if (
+    !isLegComponent &&
+    !isThorax
+  ) {
+    object.visible = false;
+  }
+
+  if (isThorax) {
+    if (Array.isArray(object.material)) {
+      object.material =
+        object.material.map((material) => {
+          const clonedMaterial =
+            material.clone();
+
+          clonedMaterial.transparent = true;
+          clonedMaterial.opacity = 0.25;
+          clonedMaterial.depthWrite = false;
+
+          return clonedMaterial;
+        });
+    } else {
+      object.material =
+        object.material.clone();
+
+      object.material.transparent = true;
+      object.material.opacity = 0.25;
+      object.material.depthWrite = false;
+    }
+  }
+});
+
+      const leftThorax =
+        model.getObjectByName('Object_17');
+
+      const rightThorax =
+        model.getObjectByName('Object_16');
+
+      if (leftThorax && rightThorax) {
+        model.updateMatrixWorld(true);
+
+        const leftThoraxBox =
+          new THREE.Box3().setFromObject(
+            leftThorax
+          );
+
+        const rightThoraxBox =
+          new THREE.Box3().setFromObject(
+            rightThorax
+          );
+
+        const bodyBox =
+          leftThoraxBox.union(
+            rightThoraxBox
+          );
+
+        const bodyCenter =
+          new THREE.Vector3();
+
+        bodyBox.getCenter(
+          bodyCenter
+        );
+
+        // Component 0
+
+        const testLeg =
+          legComponents[0];
+
+        if (testLeg) {
+          const legBox =
+            new THREE.Box3().setFromObject(
+              testLeg
+            );
+
+          const pivotWorld =
+            new THREE.Vector3();
+
+          legBox.clampPoint(
+            bodyCenter,
+            pivotWorld
+          );
+
+          pivotWorld.x += 0.02;
+          pivotWorld.y += 0.001;
+          pivotWorld.z -= 0.15;
+
+          const pivot =
+            new THREE.Group();
+
+          pivot.name =
+            'FrontLegTestPivot';
+
+          model.add(pivot);
+
+          pivot.position.copy(
+            model.worldToLocal(
+              pivotWorld.clone()
+            )
+          );
+
+          pivot.position.z -= 0.05;
+
+          pivot.attach(
+            testLeg
+          );
+
+          const marker =
+            new THREE.Mesh(
+              new THREE.SphereGeometry(
+                0.08,
+                16,
+                16
+              ),
+              new THREE.MeshBasicMaterial({
+                color: 0x00ff00
+              })
+            );
+
+          marker.name =
+            'TestLegPivotMarker';
+
+          pivot.add(marker);
+
+          const axes =
+            new THREE.AxesHelper(0.3);
+
+          pivot.add(axes);
+
+          console.log(
+            'Component 0 pivot:',
+            pivot.position
+          );
+        }
+
+        // Component 1
+
+        const testLeg2 =
+          legComponents[1];
+
+        if (testLeg2) {
+          const legBox2 =
+            new THREE.Box3().setFromObject(
+              testLeg2
+            );
+
+          const pivotWorld2 =
+            new THREE.Vector3();
+
+          legBox2.clampPoint(
+            bodyCenter,
+            pivotWorld2
+          );
+
+          pivotWorld2.x += 0.12;
+          pivotWorld2.z -= 0.30;
+          pivotWorld2.y += 0.06;
+
+          const pivot2 =
+            new THREE.Group();
+
+          pivot2.name =
+            'Leg2Pivot';
+
+          model.add(pivot2);
+
+          pivot2.position.copy(
+            model.worldToLocal(
+              pivotWorld2.clone()
+            )
+          );
+
+          pivot2.attach(
+            testLeg2
+          );
+
+          const marker2 =
+          new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.08,
+              16,
+              16
+            ),
+            new THREE.MeshBasicMaterial({
+              color: 0x0000ff,
+              depthTest: false
+            })
+          );
+
+        marker2.renderOrder = 999;
+
+          marker2.name =
+            'Leg2PivotMarker';
+
+          pivot2.add(marker2);
+
+          const axes2 =
+          new THREE.AxesHelper(1.0);
+
+        axes2.traverse((object) => {
+          if (object instanceof THREE.Line) {
+            const material = object.material;
+
+            if (material instanceof THREE.LineBasicMaterial) {
+              material.depthTest = false;
+            }
+          }
+        });
+
+        pivot2.add(axes2);
+
+          console.log(
+            'Component 1 pivot:',
+            pivot2.position
+          );
+        }
+      }
+
+          // Component 2
+
+    const testLeg3 =
+      legComponents[2];
+
+    if (testLeg3) {
+      const legBox3 =
+        new THREE.Box3().setFromObject(
+          testLeg3
+        );
+
+      const pivotWorld3 =
+        new THREE.Vector3();
+
+      legBox3.clampPoint(
+        bodyCenter,
+        pivotWorld3
+      );
+
+      const pivot3 =
+        new THREE.Group();
+
+      pivot3.name =
+        'Leg3Pivot';
+
+      model.add(pivot3);
+
+      pivot3.position.copy(
+        model.worldToLocal(
+          pivotWorld3.clone()
+        )
+      );
+
+      pivot3.attach(
+        testLeg3
+      );
+
+      const marker3 =
+        new THREE.Mesh(
+          new THREE.SphereGeometry(
+            0.08,
+            16,
+            16
+          ),
+          new THREE.MeshBasicMaterial({
+            color: 0xffff00
+          })
+        );
+
+      marker3.name =
+        'Leg3PivotMarker';
+
+      pivot3.add(marker3);
+
+      const axes3 =
+        new THREE.AxesHelper(1.0);
+
+      pivot3.add(axes3);
+
+      console.log(
+        'Component 2 pivot:',
+        pivot3.position
+      );
+    }
 
       console.log(
         'Six leg components extracted:',
@@ -1098,7 +1388,6 @@ function animate() {
 
   const deltaTime =
     clock.getDelta();
-
 
   // Wing control
 

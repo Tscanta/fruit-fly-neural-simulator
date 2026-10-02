@@ -6,10 +6,10 @@ export class WingController {
 
   private flapTime = 0;
 
-  private flapFrequency = 8;
+  private flapFrequency = 10;
 
   private strokeAngle =
-    THREE.MathUtils.degToRad(45);
+    THREE.MathUtils.degToRad(35);
 
   private pitchAngle =
     THREE.MathUtils.degToRad(8);
@@ -41,13 +41,11 @@ export class WingController {
       ) *
       this.pitchAngle;
 
-    // Both wings flap up and down together
-
+    // Main up/down flap
     this.leftWingPivot.rotation.x = stroke;
     this.rightWingPivot.rotation.x = stroke;
 
-    // Small mirrored wing twist
-
+    // Small mirrored twist
     this.leftWingPivot.rotation.z = pitch;
     this.rightWingPivot.rotation.z = -pitch;
   }
